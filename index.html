@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>綠界結帳測試</title>
+    <!-- Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        /* 後端網址（不要有最後的斜線）*/
+        window.BACKEND_URL = 'https://kaiso-meow-backend.onrender.com';
+    </script>
+</head>
+
+<body class="min-h-screen bg-gray-100 flex items-center justify-center p-6">
+    <div class="w-full max-w-md space-y-6">
+
+        <!-- Token 輸入卡片（含 placeholder）-->
+        <section class="bg-white rounded-2xl shadow p-6">
+            <h2 class="text-xl font-semibold mb-4">Step 0：輸入憑證</h2>
+
+            <div class="space-y-4">
+
+                <!-- Token -->
+                <div class="grid grid-cols-[auto_1fr] items-center gap-3">
+                    <label for="tokenInput" class="text-sm font-medium text-gray-700 whitespace-nowrap">
+                        User Token ：
+                    </label>
+                    <input id="tokenInput" type="text" placeholder="Paste Bearer Token"
+                        class="w-full rounded-md border-gray-300 focus:ring-2 focus:ring-indigo-500 p-2" />
+                </div>
+
+                <!-- Order ID -->
+                <div class="grid grid-cols-[auto_1fr] items-center gap-3">
+                    <label for="orderIdInput" class="text-sm font-medium text-gray-700 whitespace-nowrap">
+                        Order ID ：
+                    </label>
+                    <input id="orderIdInput" type="text" placeholder="Order ID（若網址未帶）"
+                        class="w-full rounded-md border-gray-300 focus:ring-2 focus:ring-indigo-500 p-2" />
+                </div>
+
+                <!-- 儲存按鈕 -->
+                <button id="saveTokenBtn"
+                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-md">
+                    儲存 Token
+                </button>
+
+                <p id="tokenStatus" class="text-sm text-gray-600"></p>
+            </div>
+        </section>
+
+
+
+        <!-- 結帳卡片 -->
+        <section class="bg-white rounded-2xl shadow p-6 opacity-50" id="checkoutCard">
+            <h2 class="text-xl font-semibold mb-4">Step 1：結帳</h2>
+            <button id="checkoutBtn"
+                class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded-md disabled:opacity-40"
+                disabled>
+                進行結帳
+            </button>
+            <p id="checkoutMsg" class="text-sm text-red-500 mt-3"></p>
+        </section>
+
+    </div>
+
+    <script>
+        const API_BASE = `${window.BACKEND_URL}/api/v1`;
+        let TOKEN = '';
+
+        // 讀取 URL ?orderId=
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlOrderId = urlParams.get('orderId');
+        if (urlOrderId) document.getElementById('orderIdInput').value = urlOrderId;
+
+        /* 儲存 Token */
+        document.getElementById('saveTokenBtn').addEventListener('click', () => {
+            TOKEN = document.getElementById('tokenInput').value.trim();
+            if (!TOKEN) {
+                document.getElementById('tokenStatus').textContent = '請輸入有效的 Token';
+                return;
+            }
+            document.getElementById('tokenStatus').textContent = '✔ 已儲存';
+            document.getElementById('checkoutBtn').disabled = false;
+            document.getElementById('checkoutCard').classList.remove('opacity-50');
+        });
+
+        /* 結帳流程 */
+        document.getElementById('checkoutBtn').addEventListener('click', async () => {
+            const orderId = document.getElementById('orderIdInput').value.trim();
+            if (!orderId) {
+                document.getElementById('checkoutMsg').textContent = '請先輸入 Order ID';
+                return;
+            }
+            try {
+                const resp = await fetch(`${API_BASE}/orders/${orderId}/checkout`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${TOKEN}` },
+                });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                // 把後端回傳 (含自動 submit 的 form) 寫進文件 → 瀏覽器自動跳往綠界
+                document.write(await resp.text());
+            } catch (err) {
+                console.error(err);
+                document.getElementById('checkoutMsg').textContent = `結帳失敗：${err}`;
+            }
+        });
+    </script>
+</body>
+
+</html>
